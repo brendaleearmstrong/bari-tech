@@ -9,7 +9,7 @@ export function AssistantPage() {
   const [messages, setMessages] = useState<Array<{ role: string; content: string }>>([
     {
       role: 'assistant',
-      content: 'Hello! I am your BariBuddy AI assistant. I can help you with meal planning, answer questions about your bariatric journey, and provide motivation. How can I help you today?',
+      content: 'Hello! I am your BariTech AI assistant. I can help you with meal planning, answer questions about your bariatric journey, and provide motivation. How can I help you today?',
     },
   ]);
 
