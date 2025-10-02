@@ -3,7 +3,7 @@ import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { mealDirectory } from '../data/meal-directory';
-import { Plus, Search, Utensils, X, Check, Star, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Search, Utensils, X, Check, Star, CreditCard as Edit2, Trash2 } from 'lucide-react';
 
 export function NutritionPage() {
   const { profile } = useUserProfile();
