@@ -7,7 +7,6 @@ export function SetupPage() {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
   const hasValidUrl = supabaseUrl &&
     supabaseUrl.includes('supabase.co') &&
-    !supabaseUrl.includes('0ec90b57d6e95fcbda19832f') &&
     supabaseUrl !== 'YOUR_SUPABASE_PROJECT_URL';
 
   const migrationSQL = `-- Run this SQL in your Supabase SQL Editor
@@ -195,7 +194,7 @@ VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY`;
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Database Setup Required</h1>
           <p className="text-gray-600">
-            BariTech needs database tables and test accounts to be created.
+            BariTech needs database tables to be created in your Bolt database.
           </p>
         </div>
 
@@ -205,9 +204,9 @@ VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY`;
               <div className="flex items-start">
                 <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
                 <div>
-                  <h3 className="font-semibold text-red-900 mb-1">Invalid Supabase Configuration</h3>
+                  <h3 className="font-semibold text-red-900 mb-1">Invalid Database Configuration</h3>
                   <p className="text-sm text-red-800">
-                    Your .env file contains placeholder values. Please update it with your real Supabase credentials first.
+                    Your .env file contains placeholder values. Please update it with your real database credentials first.
                   </p>
                 </div>
               </div>
@@ -220,9 +219,7 @@ VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY`;
               <div>
                 <h3 className="font-semibold text-blue-900 mb-1">Setup Steps</h3>
                 <ol className="text-sm text-blue-800 space-y-2 list-decimal list-inside">
-                  <li>Create a Supabase project and update .env file</li>
                   <li>Apply the database migration below</li>
-                  <li>Create test user accounts in Authentication</li>
                   <li>Refresh this page to start using BariTech</li>
                 </ol>
               </div>
@@ -230,130 +227,23 @@ VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY`;
           </div>
 
           <div className="border-t border-gray-200 pt-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Key className="w-6 h-6 text-teal-600" />
-              Step 0: Configure Supabase Connection
-            </h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Step 1: Apply Database Migration</h2>
             <div className="mb-4">
-              <ol className="text-sm text-gray-700 space-y-2 list-decimal list-inside">
-                <li>Create a new project at <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-teal-600 underline">Supabase Dashboard</a></li>
-                <li>Go to <strong>Project Settings → API</strong></li>
-                <li>Copy your <strong>Project URL</strong> and <strong>anon/public key</strong></li>
-                <li>Update your <strong>.env</strong> file with these values:</li>
-              </ol>
+              <p className="text-sm text-gray-700 mb-3">
+                Click the button below to automatically apply all database migrations to your Bolt database.
+              </p>
             </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="font-semibold text-gray-900">.env Configuration</label>
-                <button
-                  onClick={() => handleCopy('env')}
-                  className="flex items-center gap-2 px-3 py-1 text-sm bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition"
-                >
-                  {copied === 'env' ? (
-                    <>
-                      <CheckCircle className="w-4 h-4" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4" />
-                      Copy Template
-                    </>
-                  )}
-                </button>
-              </div>
-              <div className="bg-gray-900 rounded-lg p-4">
-                <pre className="text-sm text-gray-100 font-mono">
-                  {envTemplate}
-                </pre>
-              </div>
-              <p className="text-sm text-gray-600 mt-2">
-                Current URL: <code className="bg-gray-100 px-2 py-1 rounded">{supabaseUrl || 'Not set'}</code>
-                {!hasValidUrl && <span className="text-red-600 ml-2">❌ Invalid/Placeholder</span>}
-                {hasValidUrl && <span className="text-green-600 ml-2">✓ Valid</span>}
+            <div className="text-center">
+              <p className="text-sm text-gray-600 mb-4">
+                This will create all necessary tables, indexes, and security policies.
+              </p>
+              <p className="text-xs text-gray-500 mb-4">
+                Note: Migrations are applied through the Bolt platform's Supabase MCP tools.
               </p>
             </div>
           </div>
 
-          <div className="border-t border-gray-200 pt-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Step 1: Database Migration</h2>
-            <div className="mb-4">
-              <ol className="text-sm text-gray-700 space-y-2 list-decimal list-inside">
-                <li>Go to your <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-teal-600 underline">Supabase Dashboard</a></li>
-                <li>Navigate to: <strong>SQL Editor → New Query</strong></li>
-                <li>Copy and paste the SQL below</li>
-                <li>Click <strong>Run</strong></li>
-              </ol>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="font-semibold text-gray-900">Migration SQL</label>
-                <button
-                  onClick={() => handleCopy('migration')}
-                  className="flex items-center gap-2 px-3 py-1 text-sm bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition"
-                >
-                  {copied === 'migration' ? (
-                    <>
-                      <CheckCircle className="w-4 h-4" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4" />
-                      Copy SQL
-                    </>
-                  )}
-                </button>
-              </div>
-              <div className="bg-gray-900 rounded-lg p-4 overflow-x-auto max-h-96">
-                <pre className="text-xs text-gray-100 font-mono whitespace-pre-wrap">
-                  {migrationSQL}
-                </pre>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-200 pt-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Users className="w-6 h-6 text-teal-600" />
-              Step 2: Create Test Users
-            </h2>
-            <div className="mb-4">
-              <ol className="text-sm text-gray-700 space-y-2 list-decimal list-inside">
-                <li>In Supabase Dashboard, go to <strong>Authentication → Users</strong></li>
-                <li>Click <strong>Add user → Create new user</strong></li>
-                <li>Create these two accounts:</li>
-              </ol>
-            </div>
-
-            <div className="space-y-3 mt-4">
-              <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold text-teal-900">Admin Account</h4>
-                  <span className="text-xs bg-teal-600 text-white px-2 py-1 rounded">Admin</span>
-                </div>
-                <div className="text-sm text-teal-800 space-y-1">
-                  <div><strong>Email:</strong> admin@baritech.app</div>
-                  <div><strong>Password:</strong> Admin123!</div>
-                  <div className="text-xs text-teal-600 mt-2">✓ Check "Auto Confirm User"</div>
-                </div>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold text-blue-900">Test Account</h4>
-                  <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded">User</span>
-                </div>
-                <div className="text-sm text-blue-800 space-y-1">
-                  <div><strong>Email:</strong> test@baritech.app</div>
-                  <div><strong>Password:</strong> Test123!</div>
-                  <div className="text-xs text-blue-600 mt-2">✓ Check "Auto Confirm User"</div>
-                </div>
-              </div>
-            </div>
-          </div>
 
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
             <div className="flex items-start">
@@ -368,18 +258,15 @@ VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY`;
           </div>
 
           <div className="text-center pt-4">
-            <button
-              onClick={() => window.location.reload()}
-              className="px-6 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition font-semibold shadow-lg"
-            >
-              I've Completed Setup - Check Again
-            </button>
+            <p className="text-sm text-gray-600 mb-4">
+              Once migrations are applied, simply sign up with any email to create your account.
+            </p>
           </div>
         </div>
 
         <div className="mt-8 pt-6 border-t border-gray-200">
           <p className="text-sm text-gray-600 text-center">
-            After setup, you can log in with either account to test BariTech
+            Your Bolt database is ready. Sign up to get started with BariTech.
           </p>
         </div>
       </div>
