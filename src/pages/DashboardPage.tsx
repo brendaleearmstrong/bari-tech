@@ -19,6 +19,7 @@ import {
   Activity,
   Plus,
   MessageCircle,
+  Timer,
 } from 'lucide-react';
 
 export function DashboardPage() {
@@ -214,6 +215,10 @@ export function DashboardPage() {
               <a href="/weight" className="flex items-center justify-between w-full bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg p-3 font-semibold transition-all">
                 <span>Log Weight</span>
                 <Plus className="w-5 h-5" />
+              </a>
+              <a href="/timers" className="flex items-center justify-between w-full bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg p-3 font-semibold transition-all">
+                <span>Eating Timers</span>
+                <Timer className="w-5 h-5" />
               </a>
               <a href="/assistant" className="flex items-center justify-between w-full bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg p-3 font-semibold transition-all">
                 <span>Bari Coach</span>

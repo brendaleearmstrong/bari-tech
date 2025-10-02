@@ -11,6 +11,7 @@ import { WeightPage } from './pages/WeightPage';
 import { SupplementsPage} from './pages/SupplementsPage';
 import { AssistantPage } from './pages/AssistantPage';
 import { ExercisePage } from './pages/ExercisePage';
+import { TimersPage } from './pages/TimersPage';
 import { SetupPage } from './pages/SetupPage';
 import { useUserProfile } from './hooks/useUserProfile';
 import { supabase } from './lib/supabase';
@@ -108,6 +109,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <ExercisePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/timers"
+        element={
+          <ProtectedRoute>
+            <TimersPage />
           </ProtectedRoute>
         }
       />
