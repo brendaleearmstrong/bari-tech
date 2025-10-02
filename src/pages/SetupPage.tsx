@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Database, AlertCircle, CheckCircle, Copy, Users, Key } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export function SetupPage() {
-  const navigate = useNavigate();
   const [copied, setCopied] = useState<'migration' | 'users' | 'env' | null>(null);
   const [checking, setChecking] = useState(true);
 
@@ -13,7 +11,7 @@ export function SetupPage() {
       try {
         const { error } = await supabase.from('users').select('id').limit(1);
         if (!error) {
-          navigate('/signup');
+          window.location.href = '/signup';
           return;
         }
       } catch (err) {
@@ -22,7 +20,7 @@ export function SetupPage() {
       setChecking(false);
     };
     checkDatabase();
-  }, [navigate]);
+  }, []);
 
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
   const hasValidUrl = supabaseUrl &&
