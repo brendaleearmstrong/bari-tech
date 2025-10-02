@@ -5,7 +5,10 @@ export function SetupPage() {
   const [copied, setCopied] = useState<'migration' | 'users' | 'env' | null>(null);
 
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-  const hasValidUrl = supabaseUrl && supabaseUrl.includes('supabase.co') && !supabaseUrl.includes('0ec90b57d6e95fcbda19832f');
+  const hasValidUrl = supabaseUrl &&
+    supabaseUrl.includes('supabase.co') &&
+    !supabaseUrl.includes('0ec90b57d6e95fcbda19832f') &&
+    supabaseUrl !== 'YOUR_SUPABASE_PROJECT_URL';
 
   const migrationSQL = `-- Run this SQL in your Supabase SQL Editor
 -- Dashboard > SQL Editor > New Query
