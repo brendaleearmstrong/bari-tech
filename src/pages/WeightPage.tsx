@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
+import { WeightChart } from '../components/WeightChart';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { supabase } from '../lib/supabase';
 import { calculateBMI } from '../lib/calculators';
@@ -178,6 +179,12 @@ export function WeightPage() {
               </button>
             </div>
           </div>
+
+          {weightHistory.length > 0 && (
+            <div className="mb-6">
+              <WeightChart entries={weightHistory} baselineWeight={profile?.baseline_weight_kg || undefined} />
+            </div>
+          )}
 
           <div>
             <h3 className="font-semibold text-gray-900 mb-4">Weight History</h3>

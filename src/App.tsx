@@ -10,6 +10,7 @@ import { WaterPage } from './pages/WaterPage';
 import { WeightPage } from './pages/WeightPage';
 import { SupplementsPage} from './pages/SupplementsPage';
 import { AssistantPage } from './pages/AssistantPage';
+import { ExercisePage } from './pages/ExercisePage';
 import { SetupPage } from './pages/SetupPage';
 import { useUserProfile } from './hooks/useUserProfile';
 import { supabase } from './lib/supabase';
@@ -99,6 +100,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <SupplementsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/exercise"
+        element={
+          <ProtectedRoute>
+            <ExercisePage />
           </ProtectedRoute>
         }
       />

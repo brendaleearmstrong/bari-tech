@@ -7,6 +7,7 @@ import {
   Droplets,
   Weight,
   Pill,
+  Activity,
   MessageCircle,
   LogOut,
   Heart,
@@ -32,6 +33,7 @@ export function Layout(props: LayoutProps) {
     { path: '/water', label: 'Water', icon: Droplets },
     { path: '/weight', label: 'Weight', icon: Weight },
     { path: '/supplements', label: 'Supplements', icon: Pill },
+    { path: '/exercise', label: 'Exercise', icon: Activity },
     { path: '/assistant', label: 'Bari Coach', icon: MessageCircle },
   ];
 
@@ -80,7 +82,7 @@ export function Layout(props: LayoutProps) {
 
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
         <div className="flex justify-around items-center h-16">
-          {navItems.slice(0, 5).map((item) => {
+          {navItems.slice(0, 6).map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
             const textColor = isActive ? 'text-teal-600' : 'text-gray-600';
