@@ -3,615 +3,374 @@ import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { mealDirectory } from '../data/meal-directory';
-import { Plus, Search, Utensils, X, Check, Star, CreditCard as Edit2, Trash2 } from 'lucide-react';
+import { Plus, X, Utensils, Search, ChevronLeft, ChevronRight, Flame, Activity } from 'lucide-react';
+
+interface MealEntry {
+  id: string;
+  meal_type: string;
+  food_name: string;
+  portion_size: string;
+  total_protein_g: number;
+  total_calories: number;
+  total_carbs_g?: number;
+  total_fat_g?: number;
+  logged_at: string;
+}
 
 export function NutritionPage() {
   const { profile } = useUserProfile();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedPhase, setSelectedPhase] = useState<string>('all');
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [todayMeals, setTodayMeals] = useState<MealEntry[]>([]);
   const [showAddMeal, setShowAddMeal] = useState(false);
-  const [showAddCustom, setShowAddCustom] = useState(false);
-  const [recentMeals, setRecentMeals] = useState<any[]>([]);
-  const [customFoods, setCustomFoods] = useState<any[]>([]);
+  const [selectedMealType, setSelectedMealType] = useState('breakfast');
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'directory' | 'custom'>('directory');
 
-  const [selectedMeal, setSelectedMeal] = useState<any>(null);
-  const [portionMultiplier, setPortionMultiplier] = useState(1);
-  const [mealType, setMealType] = useState('breakfast');
-  const [logDate, setLogDate] = useState(new Date().toISOString().split('T')[0]);
-  const [logTime, setLogTime] = useState(new Date().toTimeString().slice(0, 5));
-
-  const [customFood, setCustomFood] = useState({
-    food_name: '',
-    description: '',
-    serving_size: '1 serving',
-    protein_g: '',
-    calories: '',
-    carbs_g: '',
-    fat_g: '',
-    fiber_g: '',
-  });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFood, setSelectedFood] = useState<any>(null);
+  const [portion, setPortion] = useState('1');
 
   useEffect(() => {
-    if (!profile) return;
-    fetchRecentMeals();
-    fetchCustomFoods();
-  }, [profile]);
+    if (profile) {
+      fetchDayMeals();
+    }
+  }, [profile, selectedDate]);
 
-  const fetchRecentMeals = async () => {
+  const fetchDayMeals = async () => {
     if (!profile) return;
+
+    const dayStart = new Date(selectedDate);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(selectedDate);
+    dayEnd.setHours(23, 59, 59, 999);
+
     const { data } = await supabase
       .from('meal_entries')
       .select('*')
       .eq('user_id', profile.id)
-      .order('logged_at', { ascending: false })
-      .limit(10);
-    setRecentMeals(data || []);
+      .gte('logged_at', dayStart.toISOString())
+      .lte('logged_at', dayEnd.toISOString())
+      .order('logged_at', { ascending: true });
+
+    setTodayMeals(data || []);
   };
 
-  const fetchCustomFoods = async () => {
-    if (!profile) return;
-    const { data } = await supabase
-      .from('custom_foods')
-      .select('*')
-      .eq('user_id', profile.id)
-      .order('food_name', { ascending: true });
-    setCustomFoods(data || []);
-  };
+  const handleLogMeal = async () => {
+    if (!profile || !selectedFood) return;
 
-  const filteredMeals = mealDirectory.filter((meal) => {
-    const matchesSearch = meal.canonical_name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesPhase = selectedPhase === 'all' || meal.phase_tags.includes(selectedPhase);
-    return matchesSearch && matchesPhase;
-  });
-
-  const filteredCustomFoods = customFoods.filter((food) =>
-    food.food_name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const handleSelectMeal = (meal: any, isCustom = false) => {
-    setSelectedMeal({ ...meal, isCustom });
-    setPortionMultiplier(1);
-  };
-
-  const handleLogSelectedMeal = async () => {
-    if (!profile || !selectedMeal) return;
     setLoading(true);
-
     try {
-      const loggedAt = `${logDate}T${logTime}:00`;
-      const multiplier = portionMultiplier;
-
-      const mealEntry: any = {
-        user_id: profile.id,
-        logged_at: loggedAt,
-        meal_type: mealType,
-        food_name: selectedMeal.isCustom ? selectedMeal.food_name : selectedMeal.canonical_name,
-        portion_size: selectedMeal.isCustom
-          ? `${multiplier} × ${selectedMeal.serving_size}`
-          : `${multiplier} portion`,
-        total_protein_g: selectedMeal.isCustom
-          ? parseFloat(selectedMeal.protein_g) * multiplier
-          : selectedMeal.protein_g_per_portion * multiplier,
-        total_calories: selectedMeal.isCustom
-          ? parseFloat(selectedMeal.calories) * multiplier
-          : selectedMeal.calories_per_portion * multiplier,
-        total_carbs_g: selectedMeal.isCustom
-          ? parseFloat(selectedMeal.carbs_g || 0) * multiplier
-          : (selectedMeal.carbs_g || 0) * multiplier,
-        total_fat_g: selectedMeal.isCustom
-          ? parseFloat(selectedMeal.fat_g || 0) * multiplier
-          : (selectedMeal.fat_g || 0) * multiplier,
-        total_fiber_g: selectedMeal.isCustom
-          ? parseFloat(selectedMeal.fiber_g || 0) * multiplier
-          : (selectedMeal.fiber_g || 0) * multiplier,
-        source: 'manual',
-      };
-
-      if (selectedMeal.isCustom) {
-        mealEntry.custom_food_id = selectedMeal.id;
-      }
-
-      const { error } = await supabase.from('meal_entries').insert([mealEntry]);
+      const multiplier = parseFloat(portion) || 1;
+      const { error } = await supabase.from('meal_entries').insert([
+        {
+          user_id: profile.id,
+          logged_at: new Date(selectedDate).toISOString(),
+          meal_type: selectedMealType,
+          food_name: selectedFood.canonical_name,
+          portion_size: `${multiplier} portion`,
+          total_protein_g: selectedFood.protein_g_per_portion * multiplier,
+          total_calories: selectedFood.calories_per_portion * multiplier,
+          total_carbs_g: selectedFood.carbs_g_per_portion ? selectedFood.carbs_g_per_portion * multiplier : null,
+          total_fat_g: selectedFood.fat_g_per_portion ? selectedFood.fat_g_per_portion * multiplier : null,
+        },
+      ]);
 
       if (error) throw error;
 
-      await fetchRecentMeals();
+      await fetchDayMeals();
       setShowAddMeal(false);
-      setSelectedMeal(null);
-      setPortionMultiplier(1);
+      setSelectedFood(null);
+      setPortion('1');
       setSearchTerm('');
-      setLogDate(new Date().toISOString().split('T')[0]);
-      setLogTime(new Date().toTimeString().slice(0, 5));
     } catch (error) {
-      console.error('Error:', error);
       alert('Failed to log meal');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCreateCustomFood = async () => {
-    if (!profile || !customFood.food_name) return;
-    setLoading(true);
+  const handleDeleteMeal = async (id: string) => {
+    if (!confirm('Delete this meal entry?')) return;
 
     try {
-      const { error } = await supabase.from('custom_foods').insert([{
-        user_id: profile.id,
-        food_name: customFood.food_name,
-        description: customFood.description,
-        serving_size: customFood.serving_size,
-        protein_g: parseFloat(customFood.protein_g) || 0,
-        calories: parseFloat(customFood.calories) || 0,
-        carbs_g: parseFloat(customFood.carbs_g) || 0,
-        fat_g: parseFloat(customFood.fat_g) || 0,
-        fiber_g: parseFloat(customFood.fiber_g) || 0,
-      }]);
-
+      const { error } = await supabase.from('meal_entries').delete().eq('id', id);
       if (error) throw error;
-
-      await fetchCustomFoods();
-      setShowAddCustom(false);
-      setCustomFood({
-        food_name: '',
-        description: '',
-        serving_size: '1 serving',
-        protein_g: '',
-        calories: '',
-        carbs_g: '',
-        fat_g: '',
-        fiber_g: '',
-      });
+      await fetchDayMeals();
     } catch (error) {
-      console.error('Error:', error);
-      alert('Failed to create custom food');
-    } finally {
-      setLoading(false);
+      alert('Failed to delete meal');
     }
   };
 
-  const handleDeleteCustomFood = async (foodId: string) => {
-    if (!confirm('Delete this custom food?')) return;
-
-    const { error } = await supabase.from('custom_foods').delete().eq('id', foodId);
-    if (!error) {
-      await fetchCustomFoods();
-    }
+  const changeDate = (days: number) => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() + days);
+    setSelectedDate(newDate);
   };
 
-  const handleToggleFavorite = async (food: any) => {
-    const { error } = await supabase
-      .from('custom_foods')
-      .update({ is_favorite: !food.is_favorite })
-      .eq('id', food.id);
+  const isToday = selectedDate.toDateString() === new Date().toDateString();
 
-    if (!error) {
-      await fetchCustomFoods();
-    }
+  const mealsByType = {
+    breakfast: todayMeals.filter(m => m.meal_type === 'breakfast'),
+    lunch: todayMeals.filter(m => m.meal_type === 'lunch'),
+    dinner: todayMeals.filter(m => m.meal_type === 'dinner'),
+    snack: todayMeals.filter(m => m.meal_type === 'snack'),
   };
+
+  const totalCalories = todayMeals.reduce((sum, meal) => sum + (meal.total_calories || 0), 0);
+  const totalProtein = todayMeals.reduce((sum, meal) => sum + (meal.total_protein_g || 0), 0);
+  const totalCarbs = todayMeals.reduce((sum, meal) => sum + (meal.total_carbs_g || 0), 0);
+  const totalFat = todayMeals.reduce((sum, meal) => sum + (meal.total_fat_g || 0), 0);
+
+  const filteredFoods = mealDirectory.filter(food =>
+    food.canonical_name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  if (!profile) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
       <div className="space-y-6 pb-20 md:pb-6">
-        <div className="bg-white rounded-2xl shadow-lg p-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center mb-4 md:mb-0">
-              <Utensils className="w-8 h-8 mr-3 text-teal-600" />
-              Nutrition Tracker
-            </h1>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Nutrition Tracker</h1>
+            <p className="text-gray-600 mt-1">Track your daily meals and macros</p>
+          </div>
+          <button
+            onClick={() => setShowAddMeal(true)}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl shadow-sm transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            Log Meal
+          </button>
+        </div>
+
+        <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-6">
             <button
-              onClick={() => setShowAddMeal(!showAddMeal)}
-              className="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center"
+              onClick={() => changeDate(-1)}
+              className="w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
             >
-              {showAddMeal ? <X className="w-5 h-5 mr-2" /> : <Plus className="w-5 h-5 mr-2" />}
-              {showAddMeal ? 'Cancel' : 'Log Meal'}
+              <ChevronLeft className="w-5 h-5 text-gray-600" />
+            </button>
+
+            <div className="text-center">
+              <h2 className="text-xl font-bold text-gray-900">
+                {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              </h2>
+              {isToday && <span className="text-sm text-teal-600 font-medium">Today</span>}
+            </div>
+
+            <button
+              onClick={() => changeDate(1)}
+              className="w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+            >
+              <ChevronRight className="w-5 h-5 text-gray-600" />
             </button>
           </div>
 
-          {showAddMeal && (
-            <div className="mb-6 p-6 bg-gradient-to-br from-gray-50 to-teal-50 rounded-xl border border-teal-100">
-              {!selectedMeal ? (
-                <>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-semibold text-gray-900 text-lg">Add Food</h3>
-                    <button
-                      onClick={() => setShowAddCustom(!showAddCustom)}
-                      className="text-sm bg-white hover:bg-gray-50 text-teal-600 font-semibold py-2 px-4 rounded-lg border border-teal-200 transition-colors"
-                    >
-                      {showAddCustom ? 'Cancel' : '+ Create Custom Food'}
-                    </button>
-                  </div>
-
-                  {showAddCustom && (
-                    <div className="mb-6 p-4 bg-white rounded-lg border border-gray-200">
-                      <h4 className="font-semibold text-gray-900 mb-4">Create Custom Food</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Food Name *</label>
-                          <input
-                            type="text"
-                            value={customFood.food_name}
-                            onChange={(e) => setCustomFood({ ...customFood, food_name: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
-                            placeholder="e.g., Grilled Chicken Breast"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Serving Size</label>
-                          <input
-                            type="text"
-                            value={customFood.serving_size}
-                            onChange={(e) => setCustomFood({ ...customFood, serving_size: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
-                            placeholder="e.g., 100g, 1 cup"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Protein (g) *</label>
-                          <input
-                            type="number"
-                            step="0.1"
-                            value={customFood.protein_g}
-                            onChange={(e) => setCustomFood({ ...customFood, protein_g: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Calories *</label>
-                          <input
-                            type="number"
-                            step="1"
-                            value={customFood.calories}
-                            onChange={(e) => setCustomFood({ ...customFood, calories: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Carbs (g)</label>
-                          <input
-                            type="number"
-                            step="0.1"
-                            value={customFood.carbs_g}
-                            onChange={(e) => setCustomFood({ ...customFood, carbs_g: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Fat (g)</label>
-                          <input
-                            type="number"
-                            step="0.1"
-                            value={customFood.fat_g}
-                            onChange={(e) => setCustomFood({ ...customFood, fat_g: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
-                          />
-                        </div>
-                        <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                          <textarea
-                            value={customFood.description}
-                            onChange={(e) => setCustomFood({ ...customFood, description: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
-                            rows={2}
-                            placeholder="Optional notes about this food"
-                          />
-                        </div>
-                      </div>
-                      <button
-                        onClick={handleCreateCustomFood}
-                        disabled={!customFood.food_name || !customFood.protein_g || !customFood.calories || loading}
-                        className="mt-4 w-full bg-teal-600 hover:bg-teal-700 disabled:bg-gray-300 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
-                      >
-                        {loading ? 'Creating...' : 'Create Custom Food'}
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="flex gap-2 mb-4">
-                    <button
-                      onClick={() => setActiveTab('directory')}
-                      className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
-                        activeTab === 'directory'
-                          ? 'bg-teal-600 text-white'
-                          : 'bg-white text-gray-600 hover:bg-gray-100'
-                      }`}
-                    >
-                      Meal Directory
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('custom')}
-                      className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
-                        activeTab === 'custom'
-                          ? 'bg-teal-600 text-white'
-                          : 'bg-white text-gray-600 hover:bg-gray-100'
-                      }`}
-                    >
-                      My Custom Foods ({customFoods.length})
-                    </button>
-                  </div>
-
-                  <div className="mb-4 flex flex-col md:flex-row gap-4">
-                    <div className="flex-1 relative">
-                      <Search className="w-5 h-5 absolute left-3 top-3 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder="Search foods..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                      />
-                    </div>
-                    {activeTab === 'directory' && (
-                      <select
-                        value={selectedPhase}
-                        onChange={(e) => setSelectedPhase(e.target.value)}
-                        className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent md:w-48"
-                      >
-                        <option value="all">All Phases</option>
-                        <option value="clear_liquid">Clear Liquid</option>
-                        <option value="full_liquid">Full Liquid</option>
-                        <option value="pureed">Pureed</option>
-                        <option value="soft">Soft</option>
-                        <option value="regular">Regular</option>
-                        <option value="maintenance">Maintenance</option>
-                      </select>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
-                    {activeTab === 'directory' ? (
-                      filteredMeals.map((meal, index) => (
-                        <div
-                          key={index}
-                          className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-lg hover:border-teal-300 transition-all cursor-pointer"
-                          onClick={() => handleSelectMeal(meal, false)}
-                        >
-                          <h4 className="font-semibold text-gray-900 mb-2">{meal.canonical_name}</h4>
-                          <p className="text-sm text-gray-600 mb-3 line-clamp-2">{meal.description}</p>
-                          <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-                            <div>
-                              <span className="text-gray-600">Protein:</span>
-                              <span className="font-semibold text-teal-600 ml-1">
-                                {meal.protein_g_per_portion}g
-                              </span>
-                            </div>
-                            <div>
-                              <span className="text-gray-600">Cal:</span>
-                              <span className="font-semibold text-gray-900 ml-1">
-                                {meal.calories_per_portion}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex flex-wrap gap-1">
-                            {meal.phase_tags.slice(0, 2).map((tag) => (
-                              <span
-                                key={tag}
-                                className="text-xs bg-teal-100 text-teal-700 px-2 py-1 rounded"
-                              >
-                                {tag.replace('_', ' ')}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      filteredCustomFoods.map((food) => (
-                        <div
-                          key={food.id}
-                          className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-lg hover:border-teal-300 transition-all"
-                        >
-                          <div className="flex items-start justify-between mb-2">
-                            <h4 className="font-semibold text-gray-900 flex-1">{food.food_name}</h4>
-                            <div className="flex gap-1">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleToggleFavorite(food);
-                                }}
-                                className="p-1 hover:bg-gray-100 rounded"
-                              >
-                                <Star
-                                  className={`w-4 h-4 ${food.is_favorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400'}`}
-                                />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteCustomFood(food.id);
-                                }}
-                                className="p-1 hover:bg-gray-100 rounded"
-                              >
-                                <Trash2 className="w-4 h-4 text-red-500" />
-                              </button>
-                            </div>
-                          </div>
-                          {food.description && (
-                            <p className="text-sm text-gray-600 mb-2 line-clamp-2">{food.description}</p>
-                          )}
-                          <p className="text-xs text-gray-500 mb-2">Serving: {food.serving_size}</p>
-                          <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-                            <div>
-                              <span className="text-gray-600">Protein:</span>
-                              <span className="font-semibold text-teal-600 ml-1">{food.protein_g}g</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-600">Cal:</span>
-                              <span className="font-semibold text-gray-900 ml-1">{food.calories}</span>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => handleSelectMeal(food, true)}
-                            className="w-full bg-teal-50 hover:bg-teal-100 text-teal-700 font-medium py-2 rounded-lg transition-colors text-sm"
-                          >
-                            Select
-                          </button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </>
-              ) : (
-                <div className="bg-white rounded-lg p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-semibold text-gray-900 text-lg">Adjust Portion</h3>
-                    <button
-                      onClick={() => setSelectedMeal(null)}
-                      className="text-gray-500 hover:text-gray-700"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-
-                  <div className="bg-teal-50 rounded-lg p-4 mb-4">
-                    <h4 className="font-semibold text-gray-900 mb-2">
-                      {selectedMeal.isCustom ? selectedMeal.food_name : selectedMeal.canonical_name}
-                    </h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                      <div>
-                        <span className="text-gray-600">Protein:</span>
-                        <span className="font-semibold text-teal-600 ml-1">
-                          {selectedMeal.isCustom
-                            ? (parseFloat(selectedMeal.protein_g) * portionMultiplier).toFixed(1)
-                            : (selectedMeal.protein_g_per_portion * portionMultiplier).toFixed(1)}g
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Calories:</span>
-                        <span className="font-semibold text-gray-900 ml-1">
-                          {selectedMeal.isCustom
-                            ? Math.round(parseFloat(selectedMeal.calories) * portionMultiplier)
-                            : Math.round(selectedMeal.calories_per_portion * portionMultiplier)}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Carbs:</span>
-                        <span className="font-semibold text-gray-900 ml-1">
-                          {selectedMeal.isCustom
-                            ? (parseFloat(selectedMeal.carbs_g || 0) * portionMultiplier).toFixed(1)
-                            : ((selectedMeal.carbs_g || 0) * portionMultiplier).toFixed(1)}g
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Fat:</span>
-                        <span className="font-semibold text-gray-900 ml-1">
-                          {selectedMeal.isCustom
-                            ? (parseFloat(selectedMeal.fat_g || 0) * portionMultiplier).toFixed(1)
-                            : ((selectedMeal.fat_g || 0) * portionMultiplier).toFixed(1)}g
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Portion Size: {portionMultiplier}x
-                      </label>
-                      <input
-                        type="range"
-                        min="0.25"
-                        max="3"
-                        step="0.25"
-                        value={portionMultiplier}
-                        onChange={(e) => setPortionMultiplier(parseFloat(e.target.value))}
-                        className="w-full"
-                      />
-                      <div className="flex justify-between text-xs text-gray-500 mt-1">
-                        <span>0.25x</span>
-                        <span>1x</span>
-                        <span>2x</span>
-                        <span>3x</span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Meal Type</label>
-                      <select
-                        value={mealType}
-                        onChange={(e) => setMealType(e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
-                      >
-                        <option value="breakfast">Breakfast</option>
-                        <option value="lunch">Lunch</option>
-                        <option value="dinner">Dinner</option>
-                        <option value="snack">Snack</option>
-                      </select>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
-                        <input
-                          type="date"
-                          value={logDate}
-                          onChange={(e) => setLogDate(e.target.value)}
-                          max={new Date().toISOString().split('T')[0]}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Time</label>
-                        <input
-                          type="time"
-                          value={logTime}
-                          onChange={(e) => setLogTime(e.target.value)}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
-                        />
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={handleLogSelectedMeal}
-                      disabled={loading}
-                      className="w-full bg-teal-600 hover:bg-teal-700 disabled:bg-gray-300 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
-                    >
-                      {loading ? 'Logging...' : 'Log This Meal'}
-                    </button>
-                  </div>
-                </div>
-              )}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl p-4 border border-orange-100">
+              <div className="flex items-center gap-2 mb-2">
+                <Flame className="w-5 h-5 text-orange-600" />
+                <span className="text-sm font-medium text-gray-600">Calories</span>
+              </div>
+              <div className="text-2xl font-bold text-gray-900">{totalCalories.toFixed(0)}</div>
             </div>
-          )}
 
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-4 text-lg">Recent Meals</h3>
-            {recentMeals.length === 0 ? (
-              <div className="text-center py-12 bg-gray-50 rounded-lg">
-                <Utensils className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-600">No meals logged yet. Start by adding your first meal!</p>
+            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-4 border border-blue-100">
+              <div className="flex items-center gap-2 mb-2">
+                <Activity className="w-5 h-5 text-blue-600" />
+                <span className="text-sm font-medium text-gray-600">Protein</span>
+              </div>
+              <div className="text-2xl font-bold text-gray-900">{totalProtein.toFixed(1)}g</div>
+            </div>
+
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-4 border border-green-100">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-sm font-medium text-gray-600">Carbs</span>
+              </div>
+              <div className="text-2xl font-bold text-gray-900">{totalCarbs.toFixed(1)}g</div>
+            </div>
+
+            <div className="bg-gradient-to-br from-yellow-50 to-amber-50 rounded-2xl p-4 border border-yellow-100">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-sm font-medium text-gray-600">Fat</span>
+              </div>
+              <div className="text-2xl font-bold text-gray-900">{totalFat.toFixed(1)}g</div>
+            </div>
+          </div>
+        </div>
+
+        {['breakfast', 'lunch', 'dinner', 'snack'].map(mealType => (
+          <div key={mealType} className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-teal-100 flex items-center justify-center">
+                  <Utensils className="w-5 h-5 text-teal-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 capitalize">{mealType}</h3>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedMealType(mealType);
+                  setShowAddMeal(true);
+                }}
+                className="w-8 h-8 rounded-lg bg-teal-100 hover:bg-teal-200 flex items-center justify-center transition-colors"
+              >
+                <Plus className="w-4 h-4 text-teal-600" />
+              </button>
+            </div>
+
+            {mealsByType[mealType as keyof typeof mealsByType].length === 0 ? (
+              <div className="text-center py-6 bg-gray-50 rounded-2xl">
+                <p className="text-gray-500 text-sm">No {mealType} logged</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {recentMeals.map((meal) => (
-                  <div
-                    key={meal.id}
-                    className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
-                  >
+                {mealsByType[mealType as keyof typeof mealsByType].map(meal => (
+                  <div key={meal.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
                     <div className="flex-1">
-                      <div className="flex items-center">
-                        <Check className="w-5 h-5 text-teal-600 mr-2" />
-                        <span className="font-medium text-gray-900 capitalize">
-                          {meal.meal_type || 'Meal'}
-                        </span>
-                        {meal.food_name && (
-                          <span className="text-sm text-gray-600 ml-2">- {meal.food_name}</span>
-                        )}
-                      </div>
-                      <div className="mt-1 text-sm text-gray-600">
-                        {meal.portion_size && <span>{meal.portion_size} • </span>}
-                        Protein: {meal.total_protein_g?.toFixed(1) || 0}g • Calories: {meal.total_calories || 0}
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {new Date(meal.logged_at).toLocaleString()}
+                      <h4 className="font-semibold text-gray-900">{meal.food_name}</h4>
+                      <p className="text-sm text-gray-600 mt-1">{meal.portion_size}</p>
+                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-600">
+                        <span>{meal.total_calories?.toFixed(0)} cal</span>
+                        <span>{meal.total_protein_g?.toFixed(1)}g protein</span>
+                        {meal.total_carbs_g && <span>{meal.total_carbs_g.toFixed(1)}g carbs</span>}
+                        {meal.total_fat_g && <span>{meal.total_fat_g.toFixed(1)}g fat</span>}
                       </div>
                     </div>
+                    <button
+                      onClick={() => handleDeleteMeal(meal.id)}
+                      className="w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 flex items-center justify-center transition-colors"
+                    >
+                      <X className="w-4 h-4 text-red-600" />
+                    </button>
                   </div>
                 ))}
               </div>
             )}
           </div>
-        </div>
+        ))}
+
+        {showAddMeal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Log Meal</h2>
+                <button
+                  onClick={() => {
+                    setShowAddMeal(false);
+                    setSelectedFood(null);
+                    setSearchTerm('');
+                    setPortion('1');
+                  }}
+                  className="w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-600" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-3">Meal Type</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {['breakfast', 'lunch', 'dinner', 'snack'].map(type => (
+                      <button
+                        key={type}
+                        onClick={() => setSelectedMealType(type)}
+                        className={`px-4 py-3 rounded-xl font-medium transition-all capitalize ${
+                          selectedMealType === type
+                            ? 'bg-teal-600 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {type}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-3">Search Food</label>
+                  <div className="relative">
+                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={e => setSearchTerm(e.target.value)}
+                      placeholder="Search for food..."
+                      className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                {searchTerm && (
+                  <div className="max-h-64 overflow-y-auto space-y-2">
+                    {filteredFoods.slice(0, 10).map(food => (
+                      <button
+                        key={food.canonical_name}
+                        onClick={() => setSelectedFood(food)}
+                        className={`w-full text-left p-4 rounded-2xl transition-all ${
+                          selectedFood?.canonical_name === food.canonical_name
+                            ? 'bg-teal-50 border-2 border-teal-300'
+                            : 'bg-gray-50 border-2 border-transparent hover:bg-gray-100'
+                        }`}
+                      >
+                        <div className="font-semibold text-gray-900">{food.canonical_name}</div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          {food.calories_per_portion} cal • {food.protein_g_per_portion}g protein
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {selectedFood && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-3">Portion Size</label>
+                    <input
+                      type="number"
+                      value={portion}
+                      onChange={e => setPortion(e.target.value)}
+                      step="0.1"
+                      min="0.1"
+                      placeholder="1.0"
+                      className="w-full px-4 py-4 text-lg border border-gray-200 rounded-2xl focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    />
+                    <div className="mt-3 p-4 bg-gray-50 rounded-xl">
+                      <p className="text-sm font-medium text-gray-900 mb-2">Nutrition Summary</p>
+                      <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
+                        <div>Calories: {(selectedFood.calories_per_portion * parseFloat(portion || '1')).toFixed(0)}</div>
+                        <div>Protein: {(selectedFood.protein_g_per_portion * parseFloat(portion || '1')).toFixed(1)}g</div>
+                        {selectedFood.carbs_g_per_portion && (
+                          <div>Carbs: {(selectedFood.carbs_g_per_portion * parseFloat(portion || '1')).toFixed(1)}g</div>
+                        )}
+                        {selectedFood.fat_g_per_portion && (
+                          <div>Fat: {(selectedFood.fat_g_per_portion * parseFloat(portion || '1')).toFixed(1)}g</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  onClick={handleLogMeal}
+                  disabled={!selectedFood || loading}
+                  className="w-full bg-teal-600 hover:bg-teal-700 disabled:bg-gray-300 text-white font-semibold py-4 px-6 rounded-2xl shadow-sm transition-colors"
+                >
+                  {loading ? 'Logging...' : 'Log Meal'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );
