@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { supabase } from '../lib/supabase';
-import { Pill, Check, Plus, X, Clock, Edit2, Trash2 } from 'lucide-react';
+import { Pill, Check, Plus, X, Clock, CreditCard as Edit2, Trash2 } from 'lucide-react';
 
 interface Supplement {
   id: string;
