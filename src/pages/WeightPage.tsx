@@ -470,6 +470,46 @@ export function WeightPage() {
           />
         )}
 
+        {profile?.baseline_weight_kg && weightHistory.length > 0 && (
+          <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">Journey Summary</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div>
+                <div className="text-sm font-medium text-gray-500 mb-2">Starting Weight</div>
+                <div className="text-2xl font-bold text-gray-900">{profile.baseline_weight_kg.toFixed(1)} kg</div>
+              </div>
+              <div>
+                <div className="text-sm font-medium text-gray-500 mb-2">Weight Lost</div>
+                <div className="text-2xl font-bold text-emerald-600">{weightLost.toFixed(1)} kg</div>
+                <div className="text-xs text-gray-600 mt-1">
+                  {((weightLost / profile.baseline_weight_kg) * 100).toFixed(1)}% of starting weight
+                </div>
+              </div>
+              {profile.goal_weight_kg && (
+                <>
+                  <div>
+                    <div className="text-sm font-medium text-gray-500 mb-2">Remaining to Goal</div>
+                    <div className="text-2xl font-bold text-gray-900">
+                      {profile.current_weight_kg && profile.current_weight_kg > profile.goal_weight_kg
+                        ? (profile.current_weight_kg - profile.goal_weight_kg).toFixed(1)
+                        : '0.0'} kg
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-500 mb-2">Progress to Goal</div>
+                    <div className="text-2xl font-bold text-indigo-600">{Math.min(goalProgress, 100).toFixed(0)}%</div>
+                    <div className="text-xs text-gray-600 mt-1">
+                      {profile.current_weight_kg && profile.current_weight_kg <= profile.goal_weight_kg
+                        ? 'Goal achieved!'
+                        : 'Keep going!'}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         {weightHistory.length > 0 && (
           <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
             <h2 className="text-xl font-semibold text-gray-900 mb-6">Recent Entries</h2>

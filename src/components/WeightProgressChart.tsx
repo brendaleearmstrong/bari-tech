@@ -73,10 +73,6 @@ export function WeightProgressChart({ entries, baselineWeight, goalWeight, miles
     `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`
   ).join(' ');
 
-  const weightLost = baselineWeight && sortedEntries.length > 0
-    ? baselineWeight - sortedEntries[sortedEntries.length - 1].weight_kg
-    : 0;
-
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
@@ -240,34 +236,6 @@ export function WeightProgressChart({ entries, baselineWeight, goalWeight, miles
           </div>
         </div>
 
-        {(baselineWeight || goalWeight || weightLost > 0) && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-gray-100 border-t border-gray-100">
-            {baselineWeight && (
-              <div className="bg-white px-6 py-5">
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Starting</div>
-                <div className="text-2xl font-semibold text-gray-900">{baselineWeight.toFixed(1)} kg</div>
-              </div>
-            )}
-            {sortedEntries.length > 0 && (
-              <div className="bg-white px-6 py-5">
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Current</div>
-                <div className="text-2xl font-semibold text-gray-900">{sortedEntries[sortedEntries.length - 1].weight_kg.toFixed(1)} kg</div>
-              </div>
-            )}
-            {weightLost > 0 && (
-              <div className="bg-white px-6 py-5">
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Lost</div>
-                <div className="text-2xl font-semibold text-teal-600">-{weightLost.toFixed(1)} kg</div>
-              </div>
-            )}
-            {goalWeight && (
-              <div className="bg-white px-6 py-5">
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Goal</div>
-                <div className="text-2xl font-semibold text-indigo-600">{goalWeight.toFixed(1)} kg</div>
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {milestones.length > 0 && (
