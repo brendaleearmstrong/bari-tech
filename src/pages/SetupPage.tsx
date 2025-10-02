@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import { Database, AlertCircle, CheckCircle, Copy, Users } from 'lucide-react';
+import { Database, AlertCircle, CheckCircle, Copy, Users, Key } from 'lucide-react';
 
 export function SetupPage() {
-  const [copied, setCopied] = useState<'migration' | 'users' | null>(null);
+  const [copied, setCopied] = useState<'migration' | 'users' | 'env' | null>(null);
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+  const hasValidUrl = supabaseUrl && supabaseUrl.includes('supabase.co') && !supabaseUrl.includes('0ec90b57d6e95fcbda19832f');
 
   const migrationSQL = `-- Run this SQL in your Supabase SQL Editor
 -- Dashboard > SQL Editor > New Query
@@ -167,9 +170,13 @@ CREATE POLICY "Users can insert own weight entries"
   ON weight_entries FOR INSERT TO authenticated
   WITH CHECK (user_id IN (SELECT id FROM users WHERE auth_user_id = auth.uid()));`;
 
-  const handleCopy = (type: 'migration' | 'users') => {
+  const envTemplate = `VITE_SUPABASE_URL=YOUR_SUPABASE_PROJECT_URL
+VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY`;
+
+  const handleCopy = (type: 'migration' | 'users' | 'env') => {
     const textToCopy = type === 'migration' ? migrationSQL :
-      'Admin: admin@baritech.app / Admin123!\nTest: test@baritech.app / Test123!';
+      type === 'users' ? 'Admin: admin@baritech.app / Admin123!\nTest: test@baritech.app / Test123!' :
+      envTemplate;
 
     navigator.clipboard.writeText(textToCopy);
     setCopied(type);
@@ -190,17 +197,79 @@ CREATE POLICY "Users can insert own weight entries"
         </div>
 
         <div className="space-y-6">
+          {!hasValidUrl && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-start">
+                <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
+                <div>
+                  <h3 className="font-semibold text-red-900 mb-1">Invalid Supabase Configuration</h3>
+                  <p className="text-sm text-red-800">
+                    Your .env file contains placeholder values. Please update it with your real Supabase credentials first.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-start">
               <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" />
               <div>
                 <h3 className="font-semibold text-blue-900 mb-1">Setup Steps</h3>
                 <ol className="text-sm text-blue-800 space-y-2 list-decimal list-inside">
+                  <li>Create a Supabase project and update .env file</li>
                   <li>Apply the database migration below</li>
                   <li>Create test user accounts in Authentication</li>
                   <li>Refresh this page to start using BariTech</li>
                 </ol>
               </div>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-200 pt-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <Key className="w-6 h-6 text-teal-600" />
+              Step 0: Configure Supabase Connection
+            </h2>
+            <div className="mb-4">
+              <ol className="text-sm text-gray-700 space-y-2 list-decimal list-inside">
+                <li>Create a new project at <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-teal-600 underline">Supabase Dashboard</a></li>
+                <li>Go to <strong>Project Settings → API</strong></li>
+                <li>Copy your <strong>Project URL</strong> and <strong>anon/public key</strong></li>
+                <li>Update your <strong>.env</strong> file with these values:</li>
+              </ol>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="font-semibold text-gray-900">.env Configuration</label>
+                <button
+                  onClick={() => handleCopy('env')}
+                  className="flex items-center gap-2 px-3 py-1 text-sm bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition"
+                >
+                  {copied === 'env' ? (
+                    <>
+                      <CheckCircle className="w-4 h-4" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      Copy Template
+                    </>
+                  )}
+                </button>
+              </div>
+              <div className="bg-gray-900 rounded-lg p-4">
+                <pre className="text-sm text-gray-100 font-mono">
+                  {envTemplate}
+                </pre>
+              </div>
+              <p className="text-sm text-gray-600 mt-2">
+                Current URL: <code className="bg-gray-100 px-2 py-1 rounded">{supabaseUrl || 'Not set'}</code>
+                {!hasValidUrl && <span className="text-red-600 ml-2">❌ Invalid/Placeholder</span>}
+                {hasValidUrl && <span className="text-green-600 ml-2">✓ Valid</span>}
+              </p>
             </div>
           </div>
 

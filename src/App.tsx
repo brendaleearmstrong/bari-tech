@@ -120,15 +120,30 @@ function App() {
   useEffect(() => {
     async function checkDatabase() {
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
         const { error } = await supabase.from('users').select('id').limit(1);
-        if (error && error.code === '42P01') {
-          setDbReady(false);
+        clearTimeout(timeoutId);
+
+        if (error) {
+          if (error.code === '42P01') {
+            setDbReady(false);
+          } else {
+            console.warn('Database error:', error.message);
+            setDbReady(false);
+          }
         } else {
           setDbReady(true);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Database check error:', err);
-        setDbReady(true);
+        if (err.name === 'AbortError' || err.message?.includes('fetch')) {
+          console.error('Cannot connect to Supabase. Please check your database configuration.');
+          setDbReady(false);
+        } else {
+          setDbReady(false);
+        }
       }
     }
     checkDatabase();
