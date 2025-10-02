@@ -4,7 +4,7 @@ import { WeightProgressChart } from '../components/WeightProgressChart';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { supabase } from '../lib/supabase';
 import { calculateBMI } from '../lib/calculators';
-import { Weight, TrendingDown, Check, Target, Trophy, Star, Plus, Edit2 } from 'lucide-react';
+import { Weight, TrendingDown, Check, Target, Trophy, Star, Plus, CreditCard as Edit2 } from 'lucide-react';
 
 export function WeightPage() {
   const { profile, updateProfile } = useUserProfile();
