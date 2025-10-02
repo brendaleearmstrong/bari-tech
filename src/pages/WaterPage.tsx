@@ -8,6 +8,8 @@ import { Droplets, Plus, Check } from 'lucide-react';
 export function WaterPage() {
   const { profile } = useUserProfile();
   const [amount, setAmount] = useState('');
+  const [logDate, setLogDate] = useState(new Date().toISOString().split('T')[0]);
+  const [logTime, setLogTime] = useState(new Date().toTimeString().slice(0, 5));
   const [todayTotal, setTodayTotal] = useState(0);
   const [target, setTarget] = useState(1800);
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
@@ -43,25 +45,35 @@ export function WaterPage() {
   const handleLogWater = async (ml: number) => {
     if (!profile) return;
 
+    const loggedAt = `${logDate}T${logTime}:00`;
+
     const { error } = await supabase.from('water_logs').insert([
       {
         user_id: profile.id,
         amount_ml: ml,
-        logged_at: new Date().toISOString(),
+        logged_at: loggedAt,
         source: 'manual',
       },
     ]);
 
     if (!error) {
-      setTodayTotal(todayTotal + ml);
       setAmount('');
+      setLogDate(new Date().toISOString().split('T')[0]);
+      setLogTime(new Date().toTimeString().slice(0, 5));
+
+      const today = new Date().toISOString().split('T')[0];
       const { data } = await supabase
         .from('water_logs')
         .select('*')
         .eq('user_id', profile.id)
-        .gte('logged_at', new Date().toISOString().split('T')[0])
+        .gte('logged_at', today)
         .order('logged_at', { ascending: false });
-      setRecentLogs(data || []);
+
+      if (data) {
+        setRecentLogs(data);
+        const total = data.reduce((sum, log) => sum + log.amount_ml, 0);
+        setTodayTotal(total);
+      }
     }
   };
 
@@ -92,25 +104,46 @@ export function WaterPage() {
             </div>
           </div>
 
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Custom Amount (ml)</label>
-            <div className="flex gap-4">
+          <div className="mb-6 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Custom Amount (ml)</label>
               <input
                 type="number"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="Enter amount"
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
-              <button
-                onClick={() => amount && handleLogWater(parseInt(amount))}
-                disabled={!amount}
-                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-semibold py-3 px-8 rounded-lg transition-colors flex items-center"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Add
-              </button>
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                <input
+                  type="date"
+                  value={logDate}
+                  onChange={(e) => setLogDate(e.target.value)}
+                  max={new Date().toISOString().split('T')[0]}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Time</label>
+                <input
+                  type="time"
+                  value={logTime}
+                  onChange={(e) => setLogTime(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+            <button
+              onClick={() => amount && handleLogWater(parseInt(amount))}
+              disabled={!amount}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-semibold py-3 px-8 rounded-lg transition-colors flex items-center justify-center"
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Log Water
+            </button>
           </div>
 
           <div className="mb-6">

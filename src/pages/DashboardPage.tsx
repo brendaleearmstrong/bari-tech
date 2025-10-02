@@ -216,7 +216,7 @@ export function DashboardPage() {
                 <Plus className="w-5 h-5" />
               </a>
               <a href="/assistant" className="flex items-center justify-between w-full bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg p-3 font-semibold transition-all">
-                <span>AI Assistant</span>
+                <span>Bari Coach</span>
                 <MessageCircle className="w-5 h-5" />
               </a>
             </div>

@@ -9,7 +9,7 @@ export function AssistantPage() {
   const [messages, setMessages] = useState<Array<{ role: string; content: string }>>([
     {
       role: 'assistant',
-      content: 'Hello! I am your BariTech AI assistant. I can help you with meal planning, answer questions about your bariatric journey, and provide motivation. How can I help you today?',
+      content: 'Hello! I am your Bari Coach. I can help you with meal planning, answer questions about your bariatric journey, and provide motivation. How can I help you today?',
     },
   ]);
 
@@ -58,7 +58,7 @@ export function AssistantPage() {
         <div className="bg-gradient-to-r from-teal-600 to-cyan-600 text-white p-6">
           <h1 className="text-2xl font-bold flex items-center">
             <MessageCircle className="w-7 h-7 mr-3" />
-            AI Assistant
+            Bari Coach
           </h1>
           <p className="text-teal-100 mt-1 flex items-center">
             <Sparkles className="w-4 h-4 mr-1" />

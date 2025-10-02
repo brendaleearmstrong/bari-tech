@@ -175,9 +175,14 @@ export function OnboardingPage() {
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                 >
-                  <option value="sleeve">Gastric Sleeve</option>
-                  <option value="bypass">Gastric Bypass</option>
-                  <option value="band">Gastric Band</option>
+                  <option value="sleeve">Gastric Sleeve (VSG)</option>
+                  <option value="bypass">Gastric Bypass (RYGB)</option>
+                  <option value="mini_bypass">Mini Gastric Bypass (MGB)</option>
+                  <option value="duodenal_switch">Duodenal Switch (DS)</option>
+                  <option value="sadi">SADI-S (Single Anastomosis)</option>
+                  <option value="band">Gastric Band (LAP-BAND)</option>
+                  <option value="balloon">Gastric Balloon</option>
+                  <option value="revision">Revision Surgery</option>
                 </select>
               </div>
               <div className="flex space-x-4">

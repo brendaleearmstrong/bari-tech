@@ -9,6 +9,8 @@ export function WeightPage() {
   const { profile, updateProfile } = useUserProfile();
   const [weight, setWeight] = useState('');
   const [notes, setNotes] = useState('');
+  const [measureDate, setMeasureDate] = useState(new Date().toISOString().split('T')[0]);
+  const [measureTime, setMeasureTime] = useState(new Date().toTimeString().slice(0, 5));
   const [loading, setLoading] = useState(false);
   const [weightHistory, setWeightHistory] = useState<any[]>([]);
 
@@ -34,19 +36,26 @@ export function WeightPage() {
 
     setLoading(true);
     try {
+      const measuredAt = `${measureDate}T${measureTime}:00`;
+      const bmiCalc = profile.height_cm ? calculateBMI(parseFloat(weight), profile.height_cm) : null;
+
       const { error } = await supabase.from('weight_entries').insert([
         {
           user_id: profile.id,
           weight_kg: parseFloat(weight),
-          measured_at: new Date().toISOString(),
+          measured_at: measuredAt,
           source: 'manual',
+          bmi: bmiCalc ? parseFloat(bmiCalc.bmi) : null,
           notes: notes || null,
         },
       ]);
 
       if (error) throw error;
 
-      await updateProfile({ current_weight_kg: parseFloat(weight) });
+      const isToday = measureDate === new Date().toISOString().split('T')[0];
+      if (isToday) {
+        await updateProfile({ current_weight_kg: parseFloat(weight) });
+      }
 
       const { data } = await supabase
         .from('weight_entries')
@@ -58,6 +67,8 @@ export function WeightPage() {
       setWeightHistory(data || []);
       setWeight('');
       setNotes('');
+      setMeasureDate(new Date().toISOString().split('T')[0]);
+      setMeasureTime(new Date().toTimeString().slice(0, 5));
     } catch (error) {
       alert('Failed to log weight');
     } finally {
@@ -123,6 +134,28 @@ export function WeightPage() {
                     New BMI: {bmiInfo.bmi} ({bmiInfo.category})
                   </p>
                 )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                  <input
+                    type="date"
+                    value={measureDate}
+                    onChange={(e) => setMeasureDate(e.target.value)}
+                    max={new Date().toISOString().split('T')[0]}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Time</label>
+                  <input
+                    type="time"
+                    value={measureTime}
+                    onChange={(e) => setMeasureTime(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                  />
+                </div>
               </div>
 
               <div>

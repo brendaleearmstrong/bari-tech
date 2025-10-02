@@ -32,7 +32,7 @@ export function Layout(props: LayoutProps) {
     { path: '/water', label: 'Water', icon: Droplets },
     { path: '/weight', label: 'Weight', icon: Weight },
     { path: '/supplements', label: 'Supplements', icon: Pill },
-    { path: '/assistant', label: 'AI Assistant', icon: MessageCircle },
+    { path: '/assistant', label: 'Bari Coach', icon: MessageCircle },
   ];
 
   return (
