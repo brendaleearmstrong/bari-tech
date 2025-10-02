@@ -1,13 +1,44 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Database, AlertCircle, CheckCircle, Copy, Users, Key } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 export function SetupPage() {
+  const navigate = useNavigate();
   const [copied, setCopied] = useState<'migration' | 'users' | 'env' | null>(null);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    const checkDatabase = async () => {
+      try {
+        const { error } = await supabase.from('users').select('id').limit(1);
+        if (!error) {
+          navigate('/signup');
+          return;
+        }
+      } catch (err) {
+        console.log('Database not ready yet');
+      }
+      setChecking(false);
+    };
+    checkDatabase();
+  }, [navigate]);
 
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
   const hasValidUrl = supabaseUrl &&
     supabaseUrl.includes('supabase.co') &&
     supabaseUrl !== 'YOUR_SUPABASE_PROJECT_URL';
+
+  if (checking) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 flex items-center justify-center p-4">
+        <div className="text-center">
+          <Database className="w-16 h-16 text-teal-600 mx-auto mb-4 animate-pulse" />
+          <p className="text-gray-600">Checking database status...</p>
+        </div>
+      </div>
+    );
+  }
 
   const migrationSQL = `-- Run this SQL in your Supabase SQL Editor
 -- Dashboard > SQL Editor > New Query
