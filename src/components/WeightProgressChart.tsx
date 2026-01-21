@@ -1,4 +1,4 @@
-import { TrendingDown, Target, Trophy } from 'lucide-react';
+import { TrendingDown, TrendingUp, Target, Trophy, Calendar, Activity } from 'lucide-react';
 
 interface WeightEntry {
   measured_at: string;
@@ -38,6 +38,70 @@ export function WeightProgressChart({ entries, baselineWeight, goalWeight, miles
   });
 
   if (allPoints.length === 0) return null;
+
+  const calculateWeeklyStats = () => {
+    if (sortedEntries.length < 2) return null;
+
+    const weeks: { [key: string]: { total: number; count: number; dates: Date[] } } = {};
+
+    sortedEntries.forEach(entry => {
+      const date = new Date(entry.measured_at);
+      const weekStart = new Date(date);
+      weekStart.setDate(date.getDate() - date.getDay());
+      const weekKey = weekStart.toISOString().split('T')[0];
+
+      if (!weeks[weekKey]) {
+        weeks[weekKey] = { total: 0, count: 0, dates: [] };
+      }
+      weeks[weekKey].total += entry.weight_kg;
+      weeks[weekKey].count += 1;
+      weeks[weekKey].dates.push(date);
+    });
+
+    const weeklyAverages = Object.entries(weeks).map(([key, data]) => ({
+      week: new Date(key),
+      average: data.total / data.count,
+      count: data.count,
+    })).sort((a, b) => a.week.getTime() - b.week.getTime());
+
+    const recentWeeks = weeklyAverages.slice(-4);
+    if (recentWeeks.length < 2) return null;
+
+    const weeklyChanges = [];
+    for (let i = 1; i < recentWeeks.length; i++) {
+      weeklyChanges.push(recentWeeks[i - 1].average - recentWeeks[i].average);
+    }
+
+    const avgWeeklyLoss = weeklyChanges.reduce((a, b) => a + b, 0) / weeklyChanges.length;
+
+    return {
+      weeklyAverages,
+      recentWeeks,
+      avgWeeklyLoss,
+    };
+  };
+
+  const weeklyStats = calculateWeeklyStats();
+
+  const calculateProjection = () => {
+    if (!goalWeight || !weeklyStats || weeklyStats.avgWeeklyLoss <= 0) return null;
+
+    const currentWeight = sortedEntries[sortedEntries.length - 1].weight_kg;
+    const remainingWeight = currentWeight - goalWeight;
+    const weeksToGoal = remainingWeight / weeklyStats.avgWeeklyLoss;
+
+    if (weeksToGoal <= 0) return null;
+
+    const projectedDate = new Date();
+    projectedDate.setDate(projectedDate.getDate() + (weeksToGoal * 7));
+
+    return {
+      weeksToGoal: Math.ceil(weeksToGoal),
+      projectedDate,
+    };
+  };
+
+  const projection = calculateProjection();
 
   const allWeights = allPoints.map(p => p.weight);
   if (goalWeight) allWeights.push(goalWeight);
@@ -91,46 +155,161 @@ export function WeightProgressChart({ entries, baselineWeight, goalWeight, miles
   };
 
   const smoothPath = createSmoothPath();
-
   const validMilestones = milestones.filter(m => m.weight_kg != null);
+
+  const yAxisLabels = [];
+  const labelCount = 5;
+  for (let i = 0; i <= labelCount; i++) {
+    const weight = chartMin + (chartRange * i / labelCount);
+    yAxisLabels.push({
+      weight: weight.toFixed(0),
+      y: 100 - (i * 100 / labelCount),
+    });
+  }
+
+  const monthLabels = [];
+  const firstDate = allPoints[0].date;
+  const lastDate = allPoints[allPoints.length - 1].date;
+  const monthsDiff = (lastDate.getFullYear() - firstDate.getFullYear()) * 12 + (lastDate.getMonth() - firstDate.getMonth());
+
+  if (monthsDiff > 0) {
+    for (let i = 0; i <= Math.min(monthsDiff, 6); i++) {
+      const date = new Date(firstDate);
+      date.setMonth(firstDate.getMonth() + i);
+      if (date <= lastDate) {
+        monthLabels.push({
+          label: date.toLocaleDateString('en-US', { month: 'short' }),
+          x: getX(date),
+        });
+      }
+    }
+  }
+
+  const totalLoss = baselineWeight && sortedEntries.length > 0
+    ? baselineWeight - sortedEntries[sortedEntries.length - 1].weight_kg
+    : 0;
+
+  const daysSinceStart = sortedEntries.length > 1
+    ? Math.floor((new Date(sortedEntries[sortedEntries.length - 1].measured_at).getTime() -
+        new Date(sortedEntries[0].measured_at).getTime()) / (1000 * 60 * 60 * 24))
+    : 0;
 
   return (
     <div className="space-y-6">
-      <div className="bg-gradient-to-br from-teal-50 via-emerald-50 to-cyan-50 rounded-3xl shadow-sm border border-teal-100 overflow-hidden">
+      {weeklyStats && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-5 border border-blue-100">
+            <div className="flex items-center gap-2 mb-2">
+              <Activity className="w-5 h-5 text-blue-600" />
+              <span className="text-sm font-medium text-gray-600">Avg Weekly Loss</span>
+            </div>
+            <div className="text-2xl font-bold text-gray-900">
+              {weeklyStats.avgWeeklyLoss.toFixed(1)} kg
+            </div>
+            <div className="text-xs text-gray-600 mt-1">
+              {daysSinceStart > 0 ? `${(totalLoss / (daysSinceStart / 7)).toFixed(1)} kg/week` : 'Track progress'}
+            </div>
+          </div>
+
+          {projection && (
+            <div className="bg-gradient-to-br from-violet-50 to-purple-50 rounded-2xl p-5 border border-violet-100">
+              <div className="flex items-center gap-2 mb-2">
+                <Target className="w-5 h-5 text-violet-600" />
+                <span className="text-sm font-medium text-gray-600">Goal ETA</span>
+              </div>
+              <div className="text-2xl font-bold text-gray-900">
+                {projection.weeksToGoal}w
+              </div>
+              <div className="text-xs text-gray-600 mt-1">
+                {projection.projectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </div>
+            </div>
+          )}
+
+          <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl p-5 border border-emerald-100">
+            <div className="flex items-center gap-2 mb-2">
+              <Calendar className="w-5 h-5 text-emerald-600" />
+              <span className="text-sm font-medium text-gray-600">Days Tracking</span>
+            </div>
+            <div className="text-2xl font-bold text-gray-900">{daysSinceStart}</div>
+            <div className="text-xs text-gray-600 mt-1">
+              {sortedEntries.length} entries
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-5 border border-orange-100">
+            <div className="flex items-center gap-2 mb-2">
+              {totalLoss > 0 ? (
+                <TrendingDown className="w-5 h-5 text-orange-600" />
+              ) : (
+                <TrendingUp className="w-5 h-5 text-orange-600" />
+              )}
+              <span className="text-sm font-medium text-gray-600">Total Change</span>
+            </div>
+            <div className="text-2xl font-bold text-gray-900">
+              {totalLoss > 0 ? '-' : '+'}{Math.abs(totalLoss).toFixed(1)} kg
+            </div>
+            <div className="text-xs text-gray-600 mt-1">
+              {baselineWeight ? `${((Math.abs(totalLoss) / baselineWeight) * 100).toFixed(1)}%` : ''}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-8">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
                 <TrendingDown className="w-7 h-7 text-teal-600" />
-                Progress Journey
+                Weight Progression
               </h3>
-              <p className="text-sm text-gray-600 mt-1">Your weight transformation over time</p>
+              <p className="text-sm text-gray-600 mt-1">
+                {allPoints[0]?.date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} - {allPoints[allPoints.length - 1]?.date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+              </p>
             </div>
           </div>
 
-          <div className="relative bg-white rounded-3xl p-6 shadow-inner" style={{ height: '400px' }}>
+          <div className="relative rounded-2xl p-6 bg-gradient-to-br from-gray-50 to-white" style={{ height: '450px' }}>
             <svg viewBox="0 0 100 100" className="w-full h-full" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                   <stop offset="0%" stopColor="#14b8a6" />
-                  <stop offset="100%" stopColor="#06b6d4" />
+                  <stop offset="50%" stopColor="#06b6d4" />
+                  <stop offset="100%" stopColor="#0ea5e9" />
                 </linearGradient>
 
                 <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#14b8a6" stopOpacity="0.3" />
-                  <stop offset="100%" stopColor="#14b8a6" stopOpacity="0.05" />
+                  <stop offset="0%" stopColor="#14b8a6" stopOpacity="0.25" />
+                  <stop offset="100%" stopColor="#14b8a6" stopOpacity="0.02" />
                 </linearGradient>
 
-                <filter id="glow">
-                  <feGaussianBlur stdDeviation="0.5" result="coloredBlur"/>
-                  <feMerge>
-                    <feMergeNode in="coloredBlur"/>
-                    <feMergeNode in="SourceGraphic"/>
-                  </feMerge>
+                <filter id="shadow">
+                  <feDropShadow dx="0" dy="0.5" stdDeviation="0.3" floodOpacity="0.2"/>
                 </filter>
               </defs>
 
-              <rect x="0" y="0" width="100" height="100" fill="url(#gridPattern)" opacity="0.03"/>
+              {yAxisLabels.map((label, i) => (
+                <g key={i}>
+                  <line
+                    x1="0"
+                    y1={label.y}
+                    x2="100"
+                    y2={label.y}
+                    stroke="#e5e7eb"
+                    strokeWidth="0.15"
+                  />
+                  <text
+                    x="-2"
+                    y={label.y + 0.5}
+                    fontSize="2"
+                    fill="#9ca3af"
+                    textAnchor="end"
+                  >
+                    {label.weight}
+                  </text>
+                </g>
+              ))}
 
               {goalWeight && (
                 <g>
@@ -140,26 +319,25 @@ export function WeightProgressChart({ entries, baselineWeight, goalWeight, miles
                     x2="100"
                     y2={getY(goalWeight)}
                     stroke="#8b5cf6"
-                    strokeWidth="0.3"
-                    strokeDasharray="2,2"
-                    opacity="0.6"
+                    strokeWidth="0.4"
+                    strokeDasharray="3,3"
+                    opacity="0.7"
                   />
                   <rect
                     x="1"
-                    y={getY(goalWeight) - 2}
-                    width="16"
-                    height="4"
-                    rx="1"
+                    y={getY(goalWeight) - 2.5}
+                    width="18"
+                    height="5"
+                    rx="2"
                     fill="#8b5cf6"
-                    opacity="0.9"
                   />
                   <text
-                    x="9"
-                    y={getY(goalWeight) + 0.6}
-                    fontSize="2"
+                    x="10"
+                    y={getY(goalWeight) + 0.8}
+                    fontSize="2.2"
                     fill="white"
                     textAnchor="middle"
-                    className="font-semibold"
+                    className="font-bold"
                   >
                     Goal {goalWeight}kg
                   </text>
@@ -177,17 +355,16 @@ export function WeightProgressChart({ entries, baselineWeight, goalWeight, miles
                     d={smoothPath}
                     fill="none"
                     stroke="url(#lineGradient)"
-                    strokeWidth="0.8"
+                    strokeWidth="0.6"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    filter="url(#glow)"
+                    filter="url(#shadow)"
                   />
                 </>
               )}
 
               {points.map((point, index) => {
                 const isLast = index === points.length - 1;
-                const isFirst = index === 0;
 
                 return (
                   <g key={index}>
@@ -196,67 +373,69 @@ export function WeightProgressChart({ entries, baselineWeight, goalWeight, miles
                         <circle
                           cx={point.x}
                           cy={point.y}
-                          r="1.5"
+                          r="1.8"
                           fill="#ef4444"
                           stroke="white"
-                          strokeWidth="0.4"
+                          strokeWidth="0.5"
+                          filter="url(#shadow)"
                         />
-                        <circle
-                          cx={point.x}
-                          cy={point.y}
-                          r="2.5"
-                          fill="none"
-                          stroke="#ef4444"
-                          strokeWidth="0.3"
-                          opacity="0.4"
+                        <text
+                          x={point.x}
+                          y={point.y - 3}
+                          fontSize="2"
+                          fill="#ef4444"
+                          textAnchor="middle"
+                          className="font-semibold"
                         >
-                          <animate
-                            attributeName="r"
-                            values="2.5;3.5;2.5"
-                            dur="2s"
-                            repeatCount="indefinite"
-                          />
-                          <animate
-                            attributeName="opacity"
-                            values="0.4;0.1;0.4"
-                            dur="2s"
-                            repeatCount="indefinite"
-                          />
-                        </circle>
+                          {point.weight.toFixed(1)}
+                        </text>
                       </>
                     ) : point.isEntry ? (
                       <>
                         <circle
                           cx={point.x}
                           cy={point.y}
-                          r={isLast ? "2" : "1.2"}
+                          r={isLast ? "2.2" : "1"}
                           fill={isLast ? "#14b8a6" : "white"}
                           stroke={isLast ? "white" : "#14b8a6"}
-                          strokeWidth="0.5"
+                          strokeWidth="0.6"
+                          filter="url(#shadow)"
                         />
                         {isLast && (
-                          <circle
-                            cx={point.x}
-                            cy={point.y}
-                            r="3"
-                            fill="none"
-                            stroke="#14b8a6"
-                            strokeWidth="0.3"
-                            opacity="0.5"
-                          >
-                            <animate
-                              attributeName="r"
-                              values="3;4;3"
-                              dur="1.5s"
-                              repeatCount="indefinite"
-                            />
-                            <animate
-                              attributeName="opacity"
-                              values="0.5;0.1;0.5"
-                              dur="1.5s"
-                              repeatCount="indefinite"
-                            />
-                          </circle>
+                          <>
+                            <text
+                              x={point.x}
+                              y={point.y - 4}
+                              fontSize="2.5"
+                              fill="#14b8a6"
+                              textAnchor="middle"
+                              className="font-bold"
+                            >
+                              {point.weight.toFixed(1)}
+                            </text>
+                            <circle
+                              cx={point.x}
+                              cy={point.y}
+                              r="3.5"
+                              fill="none"
+                              stroke="#14b8a6"
+                              strokeWidth="0.4"
+                              opacity="0.4"
+                            >
+                              <animate
+                                attributeName="r"
+                                values="3.5;4.5;3.5"
+                                dur="2s"
+                                repeatCount="indefinite"
+                              />
+                              <animate
+                                attributeName="opacity"
+                                values="0.4;0.1;0.4"
+                                dur="2s"
+                                repeatCount="indefinite"
+                              />
+                            </circle>
+                          </>
                         )}
                       </>
                     ) : null}
@@ -276,55 +455,87 @@ export function WeightProgressChart({ entries, baselineWeight, goalWeight, miles
                     <circle
                       cx={milestoneX}
                       cy={milestoneY}
-                      r="2"
+                      r="2.5"
                       fill="#fbbf24"
                       stroke="white"
-                      strokeWidth="0.4"
-                    />
-                    <circle
-                      cx={milestoneX}
-                      cy={milestoneY}
-                      r="3"
-                      fill="none"
-                      stroke="#fbbf24"
-                      strokeWidth="0.3"
-                      opacity="0.4"
+                      strokeWidth="0.5"
+                      filter="url(#shadow)"
                     />
                   </g>
                 );
               })}
             </svg>
 
-            <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-xs text-gray-500">
-              <span>{allPoints[0]?.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-              <span>{allPoints[allPoints.length - 1]?.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+            <div className="absolute bottom-4 left-12 right-4 flex items-center justify-between">
+              {monthLabels.map((label, i) => (
+                <div
+                  key={i}
+                  className="text-xs text-gray-500 font-medium"
+                  style={{ position: 'absolute', left: `${label.x}%`, transform: 'translateX(-50%)' }}
+                >
+                  {label.label}
+                </div>
+              ))}
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-6 mt-6 text-sm">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-red-500 shadow-sm"></div>
-              <span className="text-gray-600 font-medium">Starting</span>
+              <div className="w-4 h-4 rounded-full bg-red-500 shadow-sm"></div>
+              <span className="text-gray-700 font-medium">Starting Weight</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-teal-500 shadow-sm"></div>
-              <span className="text-gray-600 font-medium">Current</span>
+              <div className="w-4 h-4 rounded-full bg-teal-500 shadow-sm"></div>
+              <span className="text-gray-700 font-medium">Current Weight</span>
             </div>
             {goalWeight && (
               <div className="flex items-center gap-2">
-                <Target className="w-4 h-4 text-violet-500" />
-                <span className="text-gray-600 font-medium">Goal Line</span>
+                <div className="w-8 h-1 rounded-full bg-violet-500"></div>
+                <span className="text-gray-700 font-medium">Goal Target</span>
               </div>
             )}
             {validMilestones.length > 0 && (
               <div className="flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-amber-500" />
-                <span className="text-gray-600 font-medium">Milestones</span>
+                <div className="w-4 h-4 rounded-full bg-amber-400 shadow-sm"></div>
+                <span className="text-gray-700 font-medium">Milestones</span>
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {weeklyStats && weeklyStats.recentWeeks.length > 1 && (
+        <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
+          <h3 className="text-xl font-bold text-gray-900 mb-6">Weekly Breakdown</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {weeklyStats.recentWeeks.map((week, index) => {
+              const prevWeek = index > 0 ? weeklyStats.recentWeeks[index - 1] : null;
+              const change = prevWeek ? prevWeek.average - week.average : 0;
+
+              return (
+                <div key={index} className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-5 border border-gray-100">
+                  <div className="text-xs text-gray-500 font-medium mb-2">
+                    {week.week.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </div>
+                  <div className="text-2xl font-bold text-gray-900 mb-1">
+                    {week.average.toFixed(1)} kg
+                  </div>
+                  {prevWeek && (
+                    <div className={`text-sm font-semibold flex items-center gap-1 ${change > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {change > 0 ? (
+                        <TrendingDown className="w-4 h-4" />
+                      ) : (
+                        <TrendingUp className="w-4 h-4" />
+                      )}
+                      {Math.abs(change).toFixed(1)} kg
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {validMilestones.length > 0 && (
         <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-3xl p-8 border border-amber-100">
